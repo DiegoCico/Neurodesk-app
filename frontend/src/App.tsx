@@ -3,20 +3,30 @@ import "./theme.css";
 import Starfield from "./components/Starfield";
 import AuthCard from "./components/AuthCard";
 import { watchAuth, logout } from "./lib/auth";
+import { initPersistence } from "./lib/firebase"; // ⟵ add this
 
 /** Placeholder for your main desktop UI after auth */
 function DesktopShell() {
   return (
     <div style={{ position: "fixed", inset: 0, padding: 16 }}>
-      <div className="glass" style={{
-        height: 48, display: "flex", alignItems: "center", padding: "0 12px",
-        borderRadius: 14, gap: 12
-      }}>
+      <div
+        className="glass"
+        style={{
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          padding: "0 12px",
+          borderRadius: 14,
+          gap: 12,
+        }}
+      >
         <div style={{ fontWeight: 700 }}>Neurodek</div>
         <div style={{ opacity: 0.7 }}>•</div>
         <div style={{ opacity: 0.7 }}>Ready</div>
         <div style={{ marginLeft: "auto" }}>
-          <button className="button" onClick={() => logout()}>Log out</button>
+          <button className="button" onClick={() => logout()}>
+            Log out
+          </button>
         </div>
       </div>
       {/* Your app content goes here */}
@@ -26,8 +36,21 @@ function DesktopShell() {
 
 export default function App() {
   const [authed, setAuthed] = useState(false);
+  const [ready, setReady] = useState(false); // ⟵ add this
 
-  useEffect(() => watchAuth(u => setAuthed(!!u)), []);
+  useEffect(() => {
+    // Initialize persistence first, then subscribe to auth state changes.
+    let unsub = () => {};
+    initPersistence()
+      .catch(() => {}) // ignore if already initialized
+      .finally(() => {
+        unsub = watchAuth((u) => {
+          setAuthed(!!u);
+          setReady(true); // ⟵ first auth event received
+        });
+      });
+    return () => unsub();
+  }, []);
 
   return (
     <>
@@ -41,11 +64,24 @@ export default function App() {
       </div>
 
       {/* Centered container */}
-      <div style={{
-        position: "fixed", inset: 0, display: "grid",
-        placeItems: "center", padding: 24
-      }}>
-        {authed ? <DesktopShell /> : <AuthCard />}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+        }}
+      >
+        {!ready ? (
+          <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
+            Loading…
+          </div>
+        ) : authed ? (
+          <DesktopShell />
+        ) : (
+          <AuthCard />
+        )}
       </div>
     </>
   );

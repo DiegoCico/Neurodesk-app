@@ -1,5 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -14,3 +20,22 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+/** Apply persistence mode. Call BEFORE login/signup. */
+export async function applyPersistence(remember: boolean) {
+  try {
+    // Prefer IndexedDB for long-lived sessions
+    await setPersistence(auth, remember ? indexedDBLocalPersistence : browserSessionPersistence);
+  } catch {
+    // Fallback to localStorage if IndexedDB is unavailable
+    await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+  }
+  localStorage.setItem("rememberMe", remember ? "1" : "0");
+}
+
+/** Initialize persistence from stored preference (default: remember = true). */
+export async function initPersistence() {
+  const stored = localStorage.getItem("rememberMe");
+  const remember = stored === null ? true : stored === "1";
+  await applyPersistence(remember);
+}
