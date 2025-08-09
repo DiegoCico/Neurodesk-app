@@ -1,0 +1,90 @@
+# =========================
+# Backend (Python)
+# =========================
+backend/__pycache__/
+backend/*.py[cod]
+backend/*.pyo
+backend/*.pyd
+backend/*.pdb
+backend/*.egg-info/
+backend/*.eggs/
+backend/.Python
+backend/env/
+backend/venv/
+backend/.venv/
+backend/ENV/
+backend/.venv/
+backend/pip-wheel-metadata/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.dmypy.json
+backend/.pyre/
+backend/.pytype/
+backend/coverage.*
+backend/htmlcov/
+backend/.cache/
+backend/*.sqlite3
+backend/*.db
+backend/*.bak
+backend/*.log
+
+# =========================
+# Frontend (Node / Electron)
+# =========================
+frontend/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/.pnp/
+frontend/.pnp.js
+frontend/.pnp.cjs
+frontend/dist/
+frontend/build/
+frontend/out/
+frontend/tmp/
+frontend/temp/
+
+# Electron build output
+frontend/release/
+frontend/app/dist/
+frontend/app/out/
+frontend/*.asar
+
+# Ignore Electron binaries (prevents >100MB errors on GitHub)
+frontend/**/electron/dist/**
+frontend/**/Electron.app/**
+
+# =========================
+# Global OS / Editor junk
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+.idea/
+.vscode/
+*.swp
+*.swo
+*.tmp
+*.log
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.pfx
+
+# =========================
+# Miscellaneous
+# =========================
+*.lock
+node_modules
+node_modules/

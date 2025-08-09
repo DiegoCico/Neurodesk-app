@@ -1,0 +1,13 @@
+{
+  "name": "neurodesk",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "backend": "bash -lc 'cd backend && source .venv/bin/activate && python -m uvicorn main:app --host 127.0.0.1 --port 5050 --reload'",
+    "frontend": "cd frontend && npm run dev",
+    "dev": "concurrently -k \"npm:backend\" \"npm:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

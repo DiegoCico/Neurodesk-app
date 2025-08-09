@@ -1,0 +1,96 @@
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --text: #e9ecf1;
+    --muted: #9aa4b2;
+    --accent: #7aa2ff;
+  }
+  
+  * { box-sizing: border-box; }
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background: #000; /* deep space */
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    overflow: hidden; /* keep clean edges */
+  }
+  
+  /* full-screen vignette + edge blur */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+  .vignette::after {
+    content: "";
+    position: absolute;
+    inset: -30px; /* extend to allow blur */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    /* dark edges with transparent center */
+    mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 85%, rgba(0,0,0,1) 100%);
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 85%, rgba(0,0,0,1) 100%);
+  }
+  
+  /* glass card */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    backdrop-filter: blur(18px) saturate(130%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  
+  /* buttons/inputs */
+  .button {
+    appearance: none;
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #0b1220;
+    background: linear-gradient(180deg, #cfe0ff, #9db8ff);
+  }
+  .button:disabled { opacity: 0.6; cursor: default; }
+  .input {
+    width: 100%;
+    padding: 12px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text);
+    outline: none;
+  }
+  .input::placeholder { color: #93a0b2; }
+  .tab {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .tab.active {
+    border-color: rgba(122,162,255,0.5);
+    background: linear-gradient(180deg, rgba(122,162,255,0.18), rgba(122,162,255,0.06));
+  }
+  .linkish { color: var(--accent); cursor: pointer; text-decoration: none; }
+  
+  .brand {
+    position: fixed;
+    top: 18px; left: 20px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    display: flex; align-items: center; gap: 10px;
+    user-select: none;
+  }
+  .brand-badge {
+    width: 28px; height: 28px; border-radius: 999px;
+    background: radial-gradient(circle at 30% 30%, #a7baff, #5f83ff 60%, #2441c3 100%);
+    box-shadow: 0 0 20px rgba(122,162,255,0.55);
+  }
+  
