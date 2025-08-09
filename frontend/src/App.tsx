@@ -2,51 +2,23 @@ import React, { useEffect, useState } from "react";
 import "./theme.css";
 import Starfield from "./components/Starfield";
 import AuthCard from "./components/AuthCard";
-import { watchAuth, logout } from "./lib/auth";
-import { initPersistence } from "./lib/firebase"; // ⟵ add this
-
-/** Placeholder for your main desktop UI after auth */
-function DesktopShell() {
-  return (
-    <div style={{ position: "fixed", inset: 0, padding: 16 }}>
-      <div
-        className="glass"
-        style={{
-          height: 48,
-          display: "flex",
-          alignItems: "center",
-          padding: "0 12px",
-          borderRadius: 14,
-          gap: 12,
-        }}
-      >
-        <div style={{ fontWeight: 700 }}>Neurodek</div>
-        <div style={{ opacity: 0.7 }}>•</div>
-        <div style={{ opacity: 0.7 }}>Ready</div>
-        <div style={{ marginLeft: "auto" }}>
-          <button className="button" onClick={() => logout()}>
-            Log out
-          </button>
-        </div>
-      </div>
-      {/* Your app content goes here */}
-    </div>
-  );
-}
+import MainDesktop from "./components/MainDesktop";
+import { watchAuth } from "./lib/auth";
+import { initPersistence } from "./lib/firebase";
 
 export default function App() {
   const [authed, setAuthed] = useState(false);
-  const [ready, setReady] = useState(false); // ⟵ add this
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Initialize persistence first, then subscribe to auth state changes.
+    // Initialize Firebase persistence, then subscribe to auth changes
     let unsub = () => {};
     initPersistence()
       .catch(() => {}) // ignore if already initialized
       .finally(() => {
-        unsub = watchAuth((u) => {
-          setAuthed(!!u);
-          setReady(true); // ⟵ first auth event received
+        unsub = watchAuth((user) => {
+          setAuthed(!!user);
+          setReady(true);
         });
       });
     return () => unsub();
@@ -54,16 +26,17 @@ export default function App() {
 
   return (
     <>
+      {/* global bg */}
       <Starfield />
       <div className="vignette" />
 
-      {/* Brand (top-left) */}
+      {/* brand (top-left) */}
       <div className="brand">
         <div className="brand-badge" />
         <div>Neurodek</div>
       </div>
 
-      {/* Centered container */}
+      {/* centered content */}
       <div
         style={{
           position: "fixed",
@@ -78,7 +51,7 @@ export default function App() {
             Loading…
           </div>
         ) : authed ? (
-          <DesktopShell />
+          <MainDesktop />
         ) : (
           <AuthCard />
         )}

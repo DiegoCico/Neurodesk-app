@@ -1,0 +1,81 @@
+.command-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: auto;
+    /* keep clicks to close unless stopped inside */
+  }
+  
+  .overlay-stars {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+  }
+  
+  .overlay-ring {
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
+    border: 3px solid #000;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+  
+  .overlay-vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        circle at 50% 45%,
+        rgba(0,0,0,0) 35%,
+        rgba(0,0,0,0.45) 65%,
+        rgba(0,0,0,0.7) 85%
+      );
+  }
+  
+  .overlay-blur {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    /* blur mostly in the center, fade out to edges */
+    /* mask works in Chromium/Electron */
+    mask-image: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 30%, rgba(255,255,255,0.0) 58%);
+    -webkit-mask-image: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 30%, rgba(255,255,255,0.0) 58%);
+  }
+  
+  .overlay-commandbar {
+    position: fixed;
+    top: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(840px, 88vw);
+    display: flex;
+    justify-content: center;
+  }
+  
+  .overlay-input {
+    width: 100%;
+    font-size: 18px;
+    line-height: 48px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(20,20,20,0.72);
+    color: #fff;
+    outline: none;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow:
+      0 8px 24px rgba(0,0,0,0.35),
+      inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  
+  .overlay-input::placeholder {
+    color: rgba(255,255,255,0.6);
+  }
+  
