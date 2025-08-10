@@ -26,7 +26,7 @@ export default function MainDesktop() {
         onClose={() => setOpen(false)}
         onSubmit={(text) => {
           // Wire this to your IPC / backend
-          (window as any).veloxa?.runCommand?.(text);
+          (window as any).neurodesk?.runCommand?.(text);
           // or:
           // (window as any).ipcRenderer?.invoke?.('commands.run', text)
           console.log('run command:', text);
