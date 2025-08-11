@@ -1,4 +1,4 @@
-import { app, globalShortcut, nativeImage, Tray, Menu, BrowserWindow, ipcMain } from "electron";
+import { app, nativeImage, Tray, Menu, BrowserWindow, globalShortcut, ipcMain } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -6,13 +6,13 @@ let tray = null;
 let overlay = null;
 const isMac = process.platform === "darwin";
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:5050";
-app.disableHardwareAcceleration();
+const DIAG = process.env.NEURODESK_DIAG === "1";
 const fromHere = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 function getTrayIconPath() {
   const devPath = path.join(process.cwd(), "public", "trayTemplate.png");
   const prodPath = path.join(process.resourcesPath, "public", "trayTemplate.png");
   const p = app.isPackaged ? prodPath : devPath;
-  console.log("[Neurodesk] Tray icon expected at:", p);
+  if (DIAG) console.log("[Neurodesk] Tray icon expected at:", p);
   if (!fs.existsSync(p)) console.error("[Neurodesk] Tray icon NOT FOUND at:", p);
   return p;
 }
@@ -22,13 +22,13 @@ function createTray() {
   if (!icon.isEmpty()) icon = icon.resize({ width: 18, height: 18, quality: "best" });
   icon.setTemplateImage(false);
   tray = new Tray(icon);
-  console.log("[Neurodesk] Tray created");
+  if (DIAG) console.log("[Neurodesk] Tray created");
   tray.setTitle(" ND ");
   const menu = Menu.buildFromTemplate([
     {
       label: "Open Neurodesk",
       click: () => {
-        if (!overlay) createOverlayWindow();
+        if (!overlay || overlay.isDestroyed()) createOverlayWindow();
         overlay == null ? void 0 : overlay.show();
         overlay == null ? void 0 : overlay.focus();
       }
@@ -50,25 +50,30 @@ function createOverlayWindow() {
     overlay.focus();
     return;
   }
+  const USE_TRANSPARENCY = false;
   overlay = new BrowserWindow({
     width: 760,
     height: 420,
     show: false,
     frame: false,
-    transparent: true,
-    backgroundColor: "#00000000",
+    transparent: USE_TRANSPARENCY,
+    backgroundColor: "#151515",
     alwaysOnTop: true,
     fullscreenable: false,
     resizable: false,
     roundedCorners: true,
-    vibrancy: process.platform === "darwin" ? "sidebar" : void 0,
-    visualEffectState: process.platform === "darwin" ? "active" : void 0,
+    vibrancy: void 0,
+    // 'popover' is lighter than 'sidebar'
+    visualEffectState: void 0,
     webPreferences: {
       preload: fromHere("./preload.mjs"),
       contextIsolation: true,
       nodeIntegration: false
-      // devTools: false // enable only when needed
+      // devTools default: enabled but we won't auto-open them
     }
+  });
+  overlay.on("closed", () => {
+    overlay = null;
   });
   const injected = process.env.ELECTRON_RENDERER_URL;
   const guess = "http://localhost:5173";
@@ -77,31 +82,30 @@ function createOverlayWindow() {
       const res = await fetch(url, { method: "GET" });
       if (!res.ok) throw new Error(String(res.status));
       await overlay.loadURL(url);
-      console.log("[Neurodesk] Loaded renderer from", url);
+      if (DIAG) console.log("[Neurodesk] Loaded renderer from", url);
       return true;
     } catch {
-      console.warn("[Neurodesk] Dev server not reachable at", url);
+      if (DIAG) console.warn("[Neurodesk] Dev server not reachable at", url);
       return false;
     }
   };
   (async () => {
     let loaded = false;
     if (injected) {
-      console.log("[Neurodesk] ELECTRON_RENDERER_URL =", injected);
+      if (DIAG) console.log("[Neurodesk] ELECTRON_RENDERER_URL =", injected);
       loaded = await loadDev(injected);
     }
     if (!loaded) loaded = await loadDev(guess);
     if (!loaded) {
       const indexFile = fromHere("../index.html");
-      console.log("[Neurodesk] Falling back to file://", indexFile);
+      if (DIAG) console.log("[Neurodesk] Falling back to file://", indexFile);
       await overlay.loadFile(indexFile);
     }
   })();
   overlay.webContents.on("did-finish-load", () => {
-    console.log("[Neurodesk] overlay did-finish-load");
+    if (DIAG) console.log("[Neurodesk] overlay did-finish-load");
     overlay == null ? void 0 : overlay.show();
     overlay == null ? void 0 : overlay.focus();
-    overlay == null ? void 0 : overlay.webContents.openDevTools({ mode: "detach" });
   });
   overlay.webContents.on("did-fail-load", (_e, code, desc, url) => {
     console.error("[Neurodesk] did-fail-load", { code, desc, url });
@@ -147,11 +151,30 @@ async function proxyCommand(text) {
   }
   return r.json();
 }
+function setupAppEvents() {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+    return;
+  }
+  app.on("second-instance", () => {
+    if (overlay) {
+      if (overlay.isMinimized()) overlay.restore();
+      overlay.focus();
+    }
+  });
+  app.on("window-all-closed", (e) => {
+    e.preventDefault();
+  });
+  app.on("will-quit", () => {
+    globalShortcut.unregisterAll();
+  });
+}
 app.whenReady().then(() => {
+  if (DIAG) console.log("[Neurodesk] App ready");
   createTray();
   createOverlayWindow();
   registerGlobalHotkey();
   setupIPC();
+  setupAppEvents();
 });
-app.on("will-quit", () => globalShortcut.unregisterAll());
-app.on("window-all-closed", (e) => e.preventDefault());

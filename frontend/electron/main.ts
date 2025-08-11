@@ -18,9 +18,8 @@ let overlay: BrowserWindow | null = null
 const isMac = process.platform === 'darwin'
 const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5050'
 
-// ---- Diagnostics (turn off after things work) ----
-const DIAG = true
-app.disableHardwareAcceleration()
+// ---- Diagnostics toggle (no heavy side effects) ----
+const DIAG = process.env.NEURODESK_DIAG === '1' // set to '1' to enable some extra logs
 
 // ---- ESM-safe helper ----
 const fromHere = (rel: string) => fileURLToPath(new URL(rel, import.meta.url))
@@ -30,7 +29,7 @@ function getTrayIconPath(): string {
   const devPath = path.join(process.cwd(), 'public', 'trayTemplate.png')
   const prodPath = path.join(process.resourcesPath, 'public', 'trayTemplate.png')
   const p = app.isPackaged ? prodPath : devPath
-  console.log('[Neurodesk] Tray icon expected at:', p)
+  if (DIAG) console.log('[Neurodesk] Tray icon expected at:', p)
   if (!fs.existsSync(p)) console.error('[Neurodesk] Tray icon NOT FOUND at:', p)
   return p
 }
@@ -42,15 +41,16 @@ function createTray() {
   icon.setTemplateImage(false)
 
   tray = new Tray(icon)
-  console.log('[Neurodesk] Tray created')
+  if (DIAG) console.log('[Neurodesk] Tray created')
   tray.setTitle(' ND ') // remove once confirmed visible
 
   const menu = Menu.buildFromTemplate([
     {
       label: 'Open Neurodesk',
       click: () => {
-        if (!overlay) createOverlayWindow()
-        overlay?.show(); overlay?.focus()
+        if (!overlay || overlay.isDestroyed()) createOverlayWindow()
+        overlay?.show()
+        overlay?.focus()
       },
     },
     { type: 'separator' },
@@ -68,31 +68,39 @@ function createTray() {
 // ---- Overlay window ----
 function createOverlayWindow() {
   if (overlay && !overlay.isDestroyed()) {
-    overlay.show(); overlay.focus()
+    overlay.show()
+    overlay.focus()
     return
   }
+
+  // Use a solid background by default for performance. You can flip these back on later.
+  const USE_TRANSPARENCY = false
+  const USE_VIBRANCY = false
 
   overlay = new BrowserWindow({
     width: 760,
     height: 420,
     show: false,
     frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
+    transparent: USE_TRANSPARENCY,
+    backgroundColor: USE_TRANSPARENCY ? '#00000000' : '#151515',
     alwaysOnTop: true,
     fullscreenable: false,
     resizable: false,
     roundedCorners: true,
-    vibrancy: process.platform === 'darwin' ? 'sidebar' : undefined,
-    visualEffectState: process.platform === 'darwin' ? 'active' : undefined,
+    vibrancy: isMac && USE_VIBRANCY ? 'popover' : undefined, // 'popover' is lighter than 'sidebar'
+    visualEffectState: isMac && USE_VIBRANCY ? 'active' : undefined,
     webPreferences: {
       preload: fromHere('./preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      // devTools: false // enable only when needed
+      // devTools default: enabled but we won't auto-open them
     },
   })
-  
+
+  overlay.on('closed', () => {
+    overlay = null
+  })
 
   // Dev server detection
   const injected = process.env.ELECTRON_RENDERER_URL
@@ -103,10 +111,10 @@ function createOverlayWindow() {
       const res = await fetch(url, { method: 'GET' })
       if (!res.ok) throw new Error(String(res.status))
       await overlay!.loadURL(url)
-      console.log('[Neurodesk] Loaded renderer from', url)
+      if (DIAG) console.log('[Neurodesk] Loaded renderer from', url)
       return true
     } catch {
-      console.warn('[Neurodesk] Dev server not reachable at', url)
+      if (DIAG) console.warn('[Neurodesk] Dev server not reachable at', url)
       return false
     }
   }
@@ -114,22 +122,25 @@ function createOverlayWindow() {
   ;(async () => {
     let loaded = false
     if (injected) {
-      console.log('[Neurodesk] ELECTRON_RENDERER_URL =', injected)
+      if (DIAG) console.log('[Neurodesk] ELECTRON_RENDERER_URL =', injected)
       loaded = await loadDev(injected)
     }
     if (!loaded) loaded = await loadDev(guess)
     if (!loaded) {
-      const indexFile = fromHere('../index.html')
-      console.log('[Neurodesk] Falling back to file://', indexFile)
+      const indexFile = fromHere('../index.html') // adjust if your built file lives elsewhere
+      if (DIAG) console.log('[Neurodesk] Falling back to file://', indexFile)
       await overlay!.loadFile(indexFile)
     }
   })()
 
   overlay.webContents.on('did-finish-load', () => {
-    console.log('[Neurodesk] overlay did-finish-load')
-    overlay?.show(); overlay?.focus()
-    if (DIAG) overlay?.webContents.openDevTools({ mode: 'detach' })
+    if (DIAG) console.log('[Neurodesk] overlay did-finish-load')
+    overlay?.show()
+    overlay?.focus()
+    // Do NOT auto-open DevTools; open manually when needed:
+    // overlay?.webContents.openDevTools({ mode: 'detach' })
   })
+
   overlay.webContents.on('did-fail-load', (_e, code, desc, url) => {
     console.error('[Neurodesk] did-fail-load', { code, desc, url })
   })
@@ -152,13 +163,20 @@ function setupIPC() {
   ipcMain.on('overlay.close', () => overlay?.hide())
 
   ipcMain.on('commands.run', async (_evt, text: string) => {
-    try { await proxyCommand(text) }
-    catch (e) { console.error('[Neurodesk] commands.run error:', e) }
+    try {
+      await proxyCommand(text)
+    } catch (e) {
+      console.error('[Neurodesk] commands.run error:', e)
+    }
   })
 
   ipcMain.handle('commands.runInvoke', async (_evt, text: string) => {
-    try { const res = await proxyCommand(text); return { ok: true, data: res } }
-    catch (e: any) { return { ok: false, error: e?.message ?? String(e) } }
+    try {
+      const res = await proxyCommand(text)
+      return { ok: true, data: res }
+    } catch (e: any) {
+      return { ok: false, error: e?.message ?? String(e) }
+    }
   })
 }
 
@@ -176,14 +194,38 @@ async function proxyCommand(text: string) {
 }
 
 // ---- App lifecycle ----
+function setupAppEvents() {
+  // Enforce single instance
+  const gotLock = app.requestSingleInstanceLock()
+  if (!gotLock) {
+    app.quit()
+    return
+  }
+  app.on('second-instance', () => {
+    if (overlay) {
+      if (overlay.isMinimized()) overlay.restore()
+      overlay.focus()
+    }
+  })
+
+  // Don’t quit when all windows are closed (menubar app style)
+  app.on('window-all-closed', (e: { preventDefault: () => void }) => {
+    e.preventDefault()
+  })
+
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll()
+  })
+}
+
 app.whenReady().then(() => {
-  // Leave Dock visible while debugging (re-enable hide later if you want)
-  // if (isMac && !DIAG) app.dock.hide()
+  if (DIAG) console.log('[Neurodesk] App ready')
+  // Leave Dock visible while debugging; hide later if you want:
+  // if (isMac) app.dock.hide()
+
   createTray()
   createOverlayWindow()
   registerGlobalHotkey()
   setupIPC()
+  setupAppEvents()
 })
-
-app.on('will-quit', () => globalShortcut.unregisterAll())
-app.on('window-all-closed', (e: { preventDefault: () => any }) => e.preventDefault())
