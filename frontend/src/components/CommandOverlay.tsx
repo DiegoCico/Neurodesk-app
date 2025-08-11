@@ -6,8 +6,13 @@ export type CommandOverlayProps = {
   onSubmit?: (text: string) => void;
 };
 
-const CommandOverlay: React.FC<CommandOverlayProps> = ({ open, onClose, onSubmit }) => {
+const CommandOverlay: React.FC<CommandOverlayProps> = ({
+  open,
+  onClose,
+  onSubmit,
+}) => {
   const [value, setValue] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -28,13 +33,36 @@ const CommandOverlay: React.FC<CommandOverlayProps> = ({ open, onClose, onSubmit
 
   if (!open) return null;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     const text = value.trim();
     if (!text) return;
-    onSubmit?.(text);
-    setValue("");
-    onClose();
+
+    setSubmitting(true);
+    try {
+      // Call Electron main → FastAPI via IPC
+      const res = await (window as any).ipcRenderer?.invoke(
+        "commands.runInvoke",
+        text
+      );
+
+      if (!res?.ok) {
+        throw new Error(res?.error || "Unknown error");
+      }
+
+      onSubmit?.(text); // optional: inform parent
+      setValue("");
+      onClose();
+      // If you want the backend plan:
+      // const plan = res.data?.plan; // { kind, url, app, query, raw }
+    } catch (err: any) {
+      console.error("[CommandOverlay] submit failed:", err);
+      alert(err?.message ?? "Failed to run command");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -105,11 +133,12 @@ const CommandOverlay: React.FC<CommandOverlayProps> = ({ open, onClose, onSubmit
       >
         <input
           ref={inputRef}
-          placeholder="Type a command…"
+          placeholder={submitting ? "Running…" : "Type a command…"}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           spellCheck={false}
           aria-label="Command input"
+          disabled={submitting}
           style={{
             width: "100%",
             fontSize: 18,
@@ -125,6 +154,7 @@ const CommandOverlay: React.FC<CommandOverlayProps> = ({ open, onClose, onSubmit
             WebkitBackdropFilter: "blur(6px)",
             boxShadow:
               "0 8px 24px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.06)",
+            opacity: submitting ? 0.8 : 1,
           }}
         />
       </form>
