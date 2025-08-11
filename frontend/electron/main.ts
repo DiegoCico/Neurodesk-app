@@ -42,7 +42,6 @@ function createTray() {
 
   tray = new Tray(icon)
   if (DIAG) console.log('[Neurodesk] Tray created')
-  tray.setTitle(' ND ') // remove once confirmed visible
 
   const menu = Menu.buildFromTemplate([
     {
@@ -52,7 +51,7 @@ function createTray() {
         overlay?.show()
         overlay?.focus()
       },
-    },
+    },  
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },
   ])
@@ -81,7 +80,7 @@ function createOverlayWindow() {
     width: 760,
     height: 420,
     show: false,
-    frame: false,
+    frame: true,
     transparent: USE_TRANSPARENCY,
     backgroundColor: USE_TRANSPARENCY ? '#00000000' : '#151515',
     alwaysOnTop: true,
