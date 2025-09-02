@@ -96,4 +96,4 @@ This stack was chosen to keep the project **lightweight, responsive, and visuall
 
 
 * Inspired by futuristic UIs and space-themed backgrounds.
-* Built with ❤️ using React & Firebase.
+* Built using React & Firebase.
